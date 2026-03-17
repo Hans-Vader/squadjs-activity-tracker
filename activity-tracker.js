@@ -78,8 +78,8 @@ export default class ActivityTracker extends BasePlugin {
     this.server.on('PLAYER_WOUNDED', this.onPlayerWounded);
     this.server.on('PLAYER_DIED', this.onPlayerDied);
     this.server.on('PLAYER_REVIVED', this.onPlayerRevived);
-    this.server.on('PLAYER_POSSESS', this.onPlayerPossess);
-    this.server.on('PLAYER_UN_POSSESS', this.onPlayerUnPossess);
+    this.server.on('POSSESSED_ADMIN_CAMERA', this.onPlayerPossess);
+    this.server.on('UNPOSSESSED_ADMIN_CAMERA', this.onPlayerUnPossess);
     this.server.on('PLAYER_SQUAD_CHANGE', this.onPlayerSquadChange);
     this.server.on('CHAT_MESSAGE', this.onChatMessage);
     this.server.on('PLAYER_CONNECTED', this.onPlayerConnected);
@@ -106,8 +106,8 @@ export default class ActivityTracker extends BasePlugin {
     this.server.removeEventListener('PLAYER_WOUNDED', this.onPlayerWounded);
     this.server.removeEventListener('PLAYER_DIED', this.onPlayerDied);
     this.server.removeEventListener('PLAYER_REVIVED', this.onPlayerRevived);
-    this.server.removeEventListener('PLAYER_POSSESS', this.onPlayerPossess);
-    this.server.removeEventListener('PLAYER_UN_POSSESS', this.onPlayerUnPossess);
+    this.server.removeEventListener('POSSESSED_ADMIN_CAMERA', this.onPlayerPossess);
+    this.server.removeEventListener('UNPOSSESSED_ADMIN_CAMERA', this.onPlayerUnPossess);
     this.server.removeEventListener('PLAYER_SQUAD_CHANGE', this.onPlayerSquadChange);
     this.server.removeEventListener('CHAT_MESSAGE', this.onChatMessage);
     this.server.removeEventListener('PLAYER_CONNECTED', this.onPlayerConnected);
