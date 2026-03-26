@@ -137,6 +137,9 @@ export default class ActivityTracker extends BasePlugin {
     if (data.attacker && data.attacker.eosID) {
       this.recordActivity(data.attacker.eosID, data.attacker.name, 'Wound');
     }
+    if (data.victim && data.victim.eosID) {
+      this.recordActivity(data.victim.eosID, data.victim.name, 'Wounded');
+    }
   }
 
   onPlayerDied(data) {
@@ -282,6 +285,8 @@ export default class ActivityTracker extends BasePlugin {
       if (inactiveMs >= thresholdMs) {
         inactive.push({
           name: player.name,
+          teamID: player.teamID,
+          squadID: player.squadID,
           inactiveMs,
           lastEvent: record ? record.lastEventType : 'Unknown'
         });
@@ -301,7 +306,7 @@ export default class ActivityTracker extends BasePlugin {
     const lines = [`${this.options.warnMessageHeader} (>${minutesThreshold}m)`];
     for (const entry of inactive) {
       lines.push(
-        `[${this.formatDuration(entry.inactiveMs)}] ${entry.name} (last: ${entry.lastEvent})`
+        `[${this.formatDuration(entry.inactiveMs)}] T:${entry.teamID}/S:${entry.squadID} ${entry.name} (last: ${entry.lastEvent})`
       );
     }
     lines.push('---');
@@ -404,7 +409,6 @@ export default class ActivityTracker extends BasePlugin {
   }
 
   async sendWarns(eosID, fullMessage) {
-    const maxPage = this.options.maxPage;
     const lines = fullMessage.split('\n');
     const chunks = [];
     let chunk = '';
@@ -417,16 +421,11 @@ export default class ActivityTracker extends BasePlugin {
         chunk += (chunk ? '\n' : '') + line;
       }
     }
-    if (chunk) {
-      chunks.push(chunk);
-    }
+    if (chunk) chunks.push(chunk);
 
-    const pagesToSend = chunks.slice(0, maxPage);
-    for (let i = 0; i < pagesToSend.length; i++) {
-      await this.server.rcon.warn(eosID, pagesToSend[i]);
-      if (i < pagesToSend.length - 1) {
-        await new Promise((resolve) => setTimeout(resolve, 250));
-      }
+    for (const [i, page] of chunks.slice(0, this.options.maxPage).entries()) {
+      if (i > 0) await new Promise((resolve) => setTimeout(resolve, 250));
+      await this.server.rcon.warn(eosID, page);
     }
   }
 }
