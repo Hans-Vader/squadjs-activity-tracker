@@ -30,7 +30,7 @@ export default class ActivityTracker extends BasePlugin {
         required: false,
         description:
           'If true, the !afk command only works when typed in admin chat (ChatAdmin).',
-        default: false
+        default: true
       },
       commandPrefix: {
         required: false,
@@ -42,11 +42,11 @@ export default class ActivityTracker extends BasePlugin {
         description: 'Header text shown at the top of AFK report messages.',
         default: '--- AFK Report ---'
       },
-      maxWarnLength: {
+      maxPage: {
         required: false,
         description:
-          'Maximum character length per RCON warn message. Squad typically supports ~500 chars.',
-        default: 450
+          'Maximum number of warn pages (messages) to send per command response.',
+        default: 2
       }
     };
   }
@@ -59,8 +59,6 @@ export default class ActivityTracker extends BasePlugin {
     this.onPlayerWounded = this.onPlayerWounded.bind(this);
     this.onPlayerDied = this.onPlayerDied.bind(this);
     this.onPlayerRevived = this.onPlayerRevived.bind(this);
-    this.onPlayerPossess = this.onPlayerPossess.bind(this);
-    this.onPlayerUnPossess = this.onPlayerUnPossess.bind(this);
     this.onPlayerSquadChange = this.onPlayerSquadChange.bind(this);
     this.onChatMessage = this.onChatMessage.bind(this);
     this.onPlayerConnected = this.onPlayerConnected.bind(this);
@@ -78,8 +76,6 @@ export default class ActivityTracker extends BasePlugin {
     this.server.on('PLAYER_WOUNDED', this.onPlayerWounded);
     this.server.on('PLAYER_DIED', this.onPlayerDied);
     this.server.on('PLAYER_REVIVED', this.onPlayerRevived);
-    this.server.on('POSSESSED_ADMIN_CAMERA', this.onPlayerPossess);
-    this.server.on('UNPOSSESSED_ADMIN_CAMERA', this.onPlayerUnPossess);
     this.server.on('PLAYER_SQUAD_CHANGE', this.onPlayerSquadChange);
     this.server.on('CHAT_MESSAGE', this.onChatMessage);
     this.server.on('PLAYER_CONNECTED', this.onPlayerConnected);
@@ -106,8 +102,6 @@ export default class ActivityTracker extends BasePlugin {
     this.server.removeEventListener('PLAYER_WOUNDED', this.onPlayerWounded);
     this.server.removeEventListener('PLAYER_DIED', this.onPlayerDied);
     this.server.removeEventListener('PLAYER_REVIVED', this.onPlayerRevived);
-    this.server.removeEventListener('POSSESSED_ADMIN_CAMERA', this.onPlayerPossess);
-    this.server.removeEventListener('UNPOSSESSED_ADMIN_CAMERA', this.onPlayerUnPossess);
     this.server.removeEventListener('PLAYER_SQUAD_CHANGE', this.onPlayerSquadChange);
     this.server.removeEventListener('CHAT_MESSAGE', this.onChatMessage);
     this.server.removeEventListener('PLAYER_CONNECTED', this.onPlayerConnected);
@@ -143,6 +137,9 @@ export default class ActivityTracker extends BasePlugin {
     if (data.attacker && data.attacker.eosID) {
       this.recordActivity(data.attacker.eosID, data.attacker.name, 'Wound');
     }
+    if (data.victim && data.victim.eosID) {
+      this.recordActivity(data.victim.eosID, data.victim.name, 'Wounded');
+    }
   }
 
   onPlayerDied(data) {
@@ -160,18 +157,6 @@ export default class ActivityTracker extends BasePlugin {
     }
     if (data.victim && data.victim.eosID) {
       this.recordActivity(data.victim.eosID, data.victim.name, 'Revived');
-    }
-  }
-
-  onPlayerPossess(data) {
-    if (data.player && data.player.eosID) {
-      this.recordActivity(data.player.eosID, data.player.name, 'PossessAdminCam');
-    }
-  }
-
-  onPlayerUnPossess(data) {
-    if (data.player && data.player.eosID) {
-      this.recordActivity(data.player.eosID, data.player.name, 'UnPossessAdminCam');
     }
   }
 
@@ -300,6 +285,8 @@ export default class ActivityTracker extends BasePlugin {
       if (inactiveMs >= thresholdMs) {
         inactive.push({
           name: player.name,
+          teamID: player.teamID,
+          squadID: player.squadID,
           inactiveMs,
           lastEvent: record ? record.lastEventType : 'Unknown'
         });
@@ -319,7 +306,7 @@ export default class ActivityTracker extends BasePlugin {
     const lines = [`${this.options.warnMessageHeader} (>${minutesThreshold}m)`];
     for (const entry of inactive) {
       lines.push(
-        `[${this.formatDuration(entry.inactiveMs)}] ${entry.name} (last: ${entry.lastEvent})`
+        `[${this.formatDuration(entry.inactiveMs)}] T:${entry.teamID}/S:${entry.squadID} ${entry.name} (last: ${entry.lastEvent})`
       );
     }
     lines.push('---');
@@ -422,28 +409,23 @@ export default class ActivityTracker extends BasePlugin {
   }
 
   async sendWarns(eosID, fullMessage) {
-    const maxLen = this.options.maxWarnLength;
     const lines = fullMessage.split('\n');
     const chunks = [];
     let chunk = '';
 
     for (const line of lines) {
-      if (chunk && (chunk + '\n' + line).length > maxLen) {
+      if (chunk && (chunk + '\n' + line).length > 450) {
         chunks.push(chunk);
         chunk = line;
       } else {
         chunk += (chunk ? '\n' : '') + line;
       }
     }
-    if (chunk) {
-      chunks.push(chunk);
-    }
+    if (chunk) chunks.push(chunk);
 
-    for (let i = 0; i < chunks.length; i++) {
-      await this.server.rcon.warn(eosID, chunks[i]);
-      if (i < chunks.length - 1) {
-        await new Promise((resolve) => setTimeout(resolve, 250));
-      }
+    for (const [i, page] of chunks.slice(0, this.options.maxPage).entries()) {
+      if (i > 0) await new Promise((resolve) => setTimeout(resolve, 250));
+      await this.server.rcon.warn(eosID, page);
     }
   }
 }
