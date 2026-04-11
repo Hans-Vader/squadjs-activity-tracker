@@ -62,7 +62,7 @@ Add the plugin to your SquadJS `config.json` under `plugins`:
   "adminChatOnly": false,
   "commandPrefix": "afk",
   "warnMessageHeader": "--- AFK Report ---",
-  "maxWarnLength": 450
+  "maxPage": 2
 }
 ```
 
@@ -75,7 +75,7 @@ Add the plugin to your SquadJS `config.json` under `plugins`:
 | `adminChatOnly` | Boolean | `false` | If `true`, the `!afk` command only works in admin chat (`ChatAdmin`) |
 | `commandPrefix` | String | `"afk"` | The chat command trigger word (without the `!` prefix) |
 | `warnMessageHeader` | String | `"--- AFK Report ---"` | Header text shown at the top of AFK report messages |
-| `maxWarnLength` | Number | `450` | Maximum character length per RCON warn message (Squad supports ~500 chars) |
+| `maxPage` | Number | `2` | Maximum number of warn pages (messages) to send per command response. |
 
 All options are optional and have sensible defaults. No connectors (Discord, database) are required.
 
